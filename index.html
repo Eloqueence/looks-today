@@ -1,0 +1,504 @@
+
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>My Digital Wardrobe</title>
+<style>
+:root {
+  --bg:#faf8f6; --panel:#fff; --text:#292725;
+  --muted:#e6e2df; --pink:#f3c3d2; --line:#ded8d3;
+}
+* { box-sizing:border-box; }
+body {
+  margin:0; background:var(--bg); color:var(--text);
+  font-family:Arial,sans-serif;
+}
+button, input, select { font:inherit; }
+button {
+  border:1px solid var(--line); border-radius:8px;
+  padding:10px 13px; background:white; color:var(--text);
+  cursor:pointer;
+}
+button:hover { background:var(--pink); }
+button.active { background:var(--pink); border-color:#d89aae; }
+header {
+  display:flex; justify-content:space-between; align-items:center;
+  gap:8px; padding:14px; border-bottom:1px solid var(--line);
+  background:var(--panel); position:sticky; top:0; z-index:5;
+}
+header h1 { font-size:17px; margin:0; }
+.toolbar { display:flex; gap:7px; flex-wrap:wrap; }
+main { max-width:1100px; margin:auto; padding:14px; }
+#workspace {
+  min-height:52vh; position:relative; overflow:hidden;
+  background:white; border:1px solid var(--line);
+  border-radius:12px; display:flex; align-items:center;
+  justify-content:center;
+}
+#outfit {
+  width:min(100%,430px); height:52vh; min-height:340px;
+  position:relative; overflow:hidden;
+}
+.garment {
+  position:absolute; width:100%; height:100%;
+  inset:0; object-fit:contain; pointer-events:none;
+}
+.sticker {
+  position:absolute; width:100px; height:130px;
+  object-fit:contain; cursor:move; touch-action:none;
+  user-select:none;
+}
+#empty { color:#999; text-align:center; padding:25px; }
+.bottom-actions {
+  display:flex; flex-wrap:wrap; justify-content:center;
+  gap:10px; margin:16px 0;
+}
+.bottom-actions button { min-width:115px; padding:13px; }
+h2 { font-size:20px; margin:16px 0 12px; }
+#browser, #looksPage, #addPage { display:none; }
+#browser.open, #looksPage.open, #addPage.open { display:block; }
+.categories {
+  display:flex; flex-wrap:wrap; gap:8px; margin:12px 0;
+}
+.grid {
+  display:grid; grid-template-columns:repeat(4,minmax(0,1fr));
+  gap:9px;
+}
+.item-card { min-width:0; cursor:pointer; }
+.item-card img {
+  display:block; width:100%; aspect-ratio:3/4;
+  object-fit:contain; background:white; border:1px solid var(--line);
+  border-radius:7px;
+}
+.item-card p {
+  margin:5px 0; font-size:12px; text-align:center;
+  overflow-wrap:anywhere;
+}
+#layers {
+  display:none; position:fixed; z-index:10; right:0; top:0;
+  height:100dvh; width:min(320px,88vw); overflow:auto;
+  background:white; padding:16px; box-shadow:0 0 25px #0002;
+}
+#layers.open { display:block; }
+.layer-row {
+  display:flex; align-items:center; gap:6px; margin:9px 0;
+  padding:7px; border:1px solid var(--line); border-radius:8px;
+}
+.layer-row img { width:45px; height:60px; object-fit:contain; }
+.layer-row span { flex:1; font-size:12px; }
+.layer-row button { padding:7px; }
+.form-box {
+  display:grid; gap:14px; background:white; padding:16px;
+  border:1px solid var(--line); border-radius:10px;
+}
+fieldset { border:1px solid var(--line); border-radius:8px; }
+fieldset label { display:inline-flex; gap:5px; margin:7px; }
+input[type=text] { padding:10px; width:100%; }
+#notice { color:#6c575d; text-align:center; min-height:20px; }
+.look-card { position:relative; }
+.look-card button { width:100%; margin-top:4px; }
+.small { font-size:12px; color:#777; }
+@media(max-width:500px) {
+  header { padding:10px; }
+  header h1 { font-size:14px; }
+  button { padding:9px; font-size:13px; }
+  main { padding:9px; }
+  .grid { gap:6px; }
+  .item-card p { font-size:11px; }
+  #workspace { min-height:44vh; }
+  #outfit { height:44vh; min-height:300px; }
+}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="toolbar">
+    <button id="modeBtn" onclick="toggleMode()">Mode 1</button>
+    <button onclick="openBrowser('Accs')">Accs</button>
+  </div>
+  <h1>My Wardrobe</h1>
+  <div class="toolbar">
+    <button onclick="openBrowser()">Gallery</button>
+    <button onclick="toggleLayers()">Layers</button>
+  </div>
+</header>
+
+<main>
+  <section id="home">
+    <div id="workspace">
+      <div id="outfit"></div>
+      <div id="empty">Твій гардероб починається тут ✨<br>
+        Натисни Add, щоб завантажити першу річ.
+      </div>
+    </div>
+    <div id="notice"></div>
+    <div class="bottom-actions">
+      <button onclick="saveLook()">Save</button>
+      <button onclick="openLooks()">My looks</button>
+      <button onclick="randomLook()">Random</button>
+      <button onclick="openAdd()">Add</button>
+    </div>
+  </section>
+
+  <section id="browser">
+    <button onclick="closePages()">← Назад</button>
+    <h2 id="galleryTitle">Gallery</h2>
+    <div id="categoryButtons" class="categories"></div>
+    <div id="galleryGrid" class="grid"></div>
+  </section>
+
+  <section id="addPage">
+    <button onclick="closePages()">← Назад</button>
+    <h2>Додати одяг</h2>
+    <div class="form-box">
+      <label>Фото з телефону або комп'ютера
+        <input id="photoInput" type="file" accept="image/*">
+      </label>
+      <label>Назва речі
+        <input id="itemName" type="text" placeholder="Наприклад, білий светр">
+      </label>
+      <fieldset>
+        <legend>Категорії — можна декілька</legend>
+        <div id="addCategories"></div>
+      </fieldset>
+      <fieldset>
+        <legend>Сезони</legend>
+        <div id="addSeasons"></div>
+      </fieldset>
+      <p class="small">У цій першій версії фото автоматично вписується в область образу. Налаштування положення на манекені додамо окремим етапом.</p>
+      <button onclick="addItem()">Зберегти річ</button>
+    </div>
+  </section>
+
+  <section id="looksPage">
+    <button onclick="closePages()">← Назад</button>
+    <h2>My looks</h2>
+    <div id="lookCategories" class="categories"></div>
+    <div id="savedGrid" class="grid"></div>
+  </section>
+</main>
+
+<aside id="layers">
+  <div style="display:flex;justify-content:space-between;align-items:center">
+    <h2>Layers</h2>
+    <button onclick="toggleLayers()">✕</button>
+  </div>
+  <p class="small">↑ ↓ — змінити порядок шарів.</p>
+  <div id="layerList"></div>
+</aside>
+
+<script>
+const CATEGORIES = ['Top','Bottom','One-piece','Outerwear','Legwear','Shoes','Accs'];
+const SEASONS = ['Spring','Summer','Autumn','Winter'];
+const DEFAULT_ORDER = ['Outerwear','Legwear','Bottom','Top','Shoes','One-piece'];
+let items = [];
+let looks = [];
+let layers = [];
+let stickers = [];
+let mode = 1;
+let activeCategory = 'Top';
+let currentLookSeason = 'All';
+let db;
+
+const request = indexedDB.open('MyDigitalWardrobe', 1);
+request.onupgradeneeded = () => {
+  const d = request.result;
+  d.createObjectStore('data');
+};
+request.onsuccess = async () => {
+  db = request.result;
+  const tx = db.transaction('data','readonly');
+  const get = tx.objectStore('data').get('state');
+  get.onsuccess = () => {
+    const state = get.result || {};
+    items = state.items || [];
+    looks = state.looks || [];
+    renderOutfit();
+    showNotice('Готово до роботи!');
+  };
+};
+request.onerror = () => showNotice('Не вдалося відкрити сховище браузера.');
+
+function persist() {
+  if (!db) return;
+  const tx = db.transaction('data','readwrite');
+  tx.objectStore('data').put({items,looks},'state');
+}
+function showNotice(text) {
+  document.getElementById('notice').textContent = text;
+}
+function toggleMode() {
+  mode = mode === 1 ? 2 : 1;
+  document.getElementById('modeBtn').textContent = 'Mode ' + mode;
+}
+function toggleLayers() {
+  document.getElementById('layers').classList.toggle('open');
+  renderLayers();
+}
+function closePages() {
+  ['browser','addPage','looksPage'].forEach(id =>
+    document.getElementById(id).classList.remove('open'));
+  document.getElementById('home').style.display = '';
+}
+function showPage(id) {
+  closePages();
+  document.getElementById('home').style.display = 'none';
+  document.getElementById(id).classList.add('open');
+}
+function openBrowser(category) {
+  showPage('browser');
+  activeCategory = category || 'Top';
+  document.getElementById('galleryTitle').textContent =
+    category === 'Accs' ? 'Accessories' : 'Gallery';
+  const cats = category === 'Accs' ? ['Accs'] :
+    CATEGORIES.filter(c => c !== 'Accs');
+  document.getElementById('categoryButtons').innerHTML = cats.map(c =>
+    `<button class="${c===activeCategory?'active':''}" onclick="selectCategory('${c}')">${c}</button>`
+  ).join('');
+  renderGallery();
+}
+function selectCategory(category) {
+  activeCategory = category;
+  document.getElementById('categoryButtons').querySelectorAll('button')
+    .forEach(b => b.classList.toggle('active', b.textContent === category));
+  renderGallery();
+}
+function renderGallery() {
+  const filtered = items.filter(i => i.categories.includes(activeCategory));
+  document.getElementById('galleryGrid').innerHTML = filtered.map(i =>
+    `<div class="item-card" onclick="chooseItem('${i.id}')">
+      <img src="${i.image}" alt="">
+      <p>${escapeHTML(i.name)}</p>
+    </div>`
+  ).join('') || '<p>Тут поки порожньо. Натисни Add, щоб додати речі.</p>';
+}
+function chooseItem(id) {
+  const item = items.find(i => i.id === id);
+  if (!item) return;
+  if (item.categories.includes('Accs')) {
+    const sticker = {id:item.id,x:35,y:20,w:100,h:130,rotation:0};
+    stickers.push(sticker);
+    renderOutfit();
+    closePages();
+    showNotice('Аксесуар додано. Перетягни його на потрібне місце.');
+    return;
+  }
+  layers = layers.filter(id2 => id2 !== id);
+  const category = item.categories.find(c => c !== 'Accs');
+  const order = DEFAULT_ORDER.indexOf(category);
+  let insertAt = layers.findIndex(id2 => {
+    const other = items.find(i => i.id === id2);
+    const otherCat = other?.categories.find(c => c !== 'Accs');
+    return DEFAULT_ORDER.indexOf(otherCat) > order;
+  });
+  if (insertAt < 0) insertAt = layers.length;
+  layers.splice(insertAt,0,id);
+  renderOutfit();
+  renderLayers();
+  closePages();
+}
+function renderOutfit() {
+  const outfit = document.getElementById('outfit');
+  outfit.innerHTML = '';
+  layers.forEach(id => {
+    const item = items.find(i => i.id === id);
+    if (!item) return;
+    const img = document.createElement('img');
+    img.className = 'garment';
+    img.src = item.image;
+    img.alt = item.name;
+    outfit.appendChild(img);
+  });
+  stickers.forEach((s,index) => {
+    const item = items.find(i => i.id === s.id);
+    if (!item) return;
+    const img = document.createElement('img');
+    img.className = 'sticker';
+    img.src = item.image;
+    img.alt = item.name;
+    img.style.left = s.x + '%';
+    img.style.top = s.y + '%';
+    img.style.width = s.w + 'px';
+    img.style.height = s.h + 'px';
+    img.style.transform = `rotate(${s.rotation}deg)`;
+    makeDraggable(img,s);
+    outfit.appendChild(img);
+  });
+  document.getElementById('empty').style.display =
+    layers.length || stickers.length ? 'none' : 'block';
+}
+function makeDraggable(el, sticker) {
+  let startX, startY, oldX, oldY;
+  el.onpointerdown = e => {
+    e.preventDefault();
+    startX=e.clientX; startY=e.clientY;
+    oldX=sticker.x; oldY=sticker.y;
+    el.setPointerCapture(e.pointerId);
+  };
+  el.onpointermove = e => {
+    if (!el.hasPointerCapture(e.pointerId)) return;
+    const box = document.getElementById('outfit').getBoundingClientRect();
+    sticker.x = oldX + (e.clientX-startX)/box.width*100;
+    sticker.y = oldY + (e.clientY-startY)/box.height*100;
+    el.style.left = sticker.x+'%';
+    el.style.top = sticker.y+'%';
+  };
+}
+function renderLayers() {
+  document.getElementById('layerList').innerHTML = layers.map((id,index) => {
+    const item = items.find(i => i.id === id);
+    if (!item) return '';
+    return `<div class="layer-row">
+      <img src="${item.image}">
+      <span>${escapeHTML(item.name)}</span>
+      <button onclick="moveLayer(${index},-1)">↑</button>
+      <button onclick="moveLayer(${index},1)">↓</button>
+      <button onclick="removeLayer('${id}')">✕</button>
+    </div>`;
+  }).join('') || '<p>Додай річ через Gallery.</p>';
+}
+function moveLayer(index,delta) {
+  const next = index+delta;
+  if (next<0 || next>=layers.length) return;
+  [layers[index],layers[next]]=[layers[next],layers[index]];
+  renderOutfit(); renderLayers();
+}
+function removeLayer(id) {
+  layers=layers.filter(x=>x!==id);
+  renderOutfit(); renderLayers();
+}
+function openAdd() {
+  showPage('addPage');
+  document.getElementById('addCategories').innerHTML =
+    CATEGORIES.map(c=>`<label><input type="checkbox" value="${c}">${c}</label>`).join('');
+  document.getElementById('addSeasons').innerHTML =
+    SEASONS.map(s=>`<label><input type="checkbox" value="${s}">${s}</label>`).join('');
+}
+async function addItem() {
+  const file = document.getElementById('photoInput').files[0];
+  if (!file) { alert('Спочатку вибери фото.'); return; }
+  if (!file.type.startsWith('image/')) { alert('Вибери файл зображення.'); return; }
+  const categories = [...document.querySelectorAll('#addCategories input:checked')].map(x=>x.value);
+  const seasons = [...document.querySelectorAll('#addSeasons input:checked')].map(x=>x.value);
+  if (!categories.length) { alert('Обери хоча б одну категорію.'); return; }
+
+  try {
+    const image = await resizeImage(file);
+    items.push({
+      id: crypto.randomUUID(),
+      name: document.getElementById('itemName').value.trim() || file.name,
+      image,categories,seasons
+    });
+    persist();
+    document.getElementById('photoInput').value='';
+    document.getElementById('itemName').value='';
+    closePages();
+    showNotice('Річ збережена в гардеробі!');
+  } catch(e) { alert('Не вдалося обробити фото. Спробуй інше зображення.'); }
+}
+function resizeImage(file) {
+  return new Promise((resolve,reject)=>{
+    const reader=new FileReader();
+    reader.onerror=reject;
+    reader.onload=()=>{
+      const img=new Image();
+      img.onerror=reject;
+      img.onload=()=>{
+        const scale=Math.min(1,1000/Math.max(img.width,img.height));
+        const canvas=document.createElement('canvas');
+        canvas.width=Math.round(img.width*scale);
+        canvas.height=Math.round(img.height*scale);
+        canvas.getContext('2d').drawImage(img,0,0,canvas.width,canvas.height);
+        resolve(canvas.toDataURL('image/jpeg',0.88));
+      };
+      img.src=reader.result;
+    };
+    reader.readAsDataURL(file);
+  });
+}
+function randomLook() {
+  stickers=[];
+  const available = items.filter(i=>!i.categories.includes('Accs'));
+  const choose = cat => {
+    const list=available.filter(i=>i.categories.includes(cat));
+    return list.length ? list[Math.floor(Math.random()*list.length)] : null;
+  };
+  const result=[];
+  if (mode===1) {
+    const top=choose('Top'), bottom=choose('Bottom');
+    if (top) result.push(top);
+    if (bottom) result.push(bottom);
+  } else {
+    const dress=choose('One-piece');
+    if (dress) result.push(dress);
+  }
+  for (const cat of ['Legwear','Shoes','Outerwear']) {
+    const item=choose(cat);
+    if (item && Math.random()< (cat==='Outerwear'?0.65:0.85)) result.push(item);
+  }
+  if (!result.length) {
+    showNotice('Додай більше речей у відповідні категорії.');
+    return;
+  }
+  layers=result.map(i=>i.id);
+  renderOutfit(); renderLayers();
+  showNotice('Новий випадковий образ!');
+}
+function saveLook() {
+  if (!layers.length && !stickers.length) {
+    alert('Спочатку створи образ.'); return;
+  }
+  const season=prompt('Для якого сезону зберегти? Spring, Summer, Autumn або Winter','Autumn');
+  if (!season) return;
+  const normalized=SEASONS.find(s=>s.toLowerCase()===season.trim().toLowerCase());
+  if (!normalized) { alert('Введи Spring, Summer, Autumn або Winter.'); return; }
+  looks.push({
+    id:crypto.randomUUID(),season:normalized,
+    layers:[...layers],stickers:JSON.parse(JSON.stringify(stickers)),
+    created:Date.now()
+  });
+  persist();
+  showNotice('Образ збережено!');
+}
+function openLooks() {
+  showPage('looksPage');
+  const cats=['All',...SEASONS];
+  document.getElementById('lookCategories').innerHTML=cats.map(s=>
+    `<button class="${s===currentLookSeason?'active':''}" onclick="selectLookSeason('${s}')">${s}</button>`
+  ).join('');
+  renderLooks();
+}
+function selectLookSeason(s) {
+  currentLookSeason=s; openLooks();
+}
+function renderLooks() {
+  const filtered=looks.filter(l=>currentLookSeason==='All'||l.season===currentLookSeason);
+  document.getElementById('savedGrid').innerHTML=filtered.map(l=>{
+    const first=items.find(i=>i.id===l.layers[0]);
+    return `<div class="look-card">
+      <div class="item-card" onclick="loadLook('${l.id}')">
+      ${first?`<img src="${first.image}">`:'<div style="aspect-ratio:3/4;background:white"></div>'}
+      <p>${l.season}</p></div>
+      <button onclick="deleteLook('${l.id}')">Видалити</button>
+    </div>`;
+  }).join('')||'<p>Поки немає збережених образів.</p>';
+}
+function loadLook(id) {
+  const look=looks.find(l=>l.id===id);
+  if (!look) return;
+  layers=[...look.layers]; stickers=JSON.parse(JSON.stringify(look.stickers||[]));
+  renderOutfit(); renderLayers(); closePages();
+}
+function deleteLook(id) {
+  if (!confirm('Видалити цей образ?')) return;
+  looks=looks.filter(l=>l.id!==id); persist(); renderLooks();
+}
+function escapeHTML(s) {
+  return String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+</script>
+</body>
+</html>
